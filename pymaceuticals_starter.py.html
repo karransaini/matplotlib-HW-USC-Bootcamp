@@ -1,0 +1,331 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[61]:
+
+
+# Dependencies and Setup
+get_ipython().run_line_magic('matplotlib', 'inline')
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+import os
+import csv
+
+# Hide warning messages in notebook
+import warnings
+warnings.filterwarnings('ignore')
+
+# File to Load
+path = os.path.join("data", "mouse_drug_data.csv")
+mouse_drug_data = pd.read_csv(path)
+
+path2 = os.path.join("data", "clinicaltrial_data.csv")
+clinicaltrial_data = pd.read_csv(path2)
+
+# Combine the data into a single dataset
+combined = pd.merge(clinicaltrial_data, mouse_drug_data,
+                    on ="Mouse ID",how='outer')
+
+# Display the data table for preview
+combined.head()
+
+
+# ## Tumor Response to Treatment
+
+# In[70]:
+
+
+# Store the Mean Tumor Volume Data Grouped by Drug and Timepoint 
+average_tumor_vol = combined.groupby(["Drug","Timepoint"])["Tumor Volume (mm3)"].mean().reset_index()
+
+# Convert to DataFrame
+tumor_response = pd.DataFrame(average_tumor_vol)
+
+# Preview DataFrame
+tumor_response.head()
+
+
+# In[71]:
+
+
+# Store the Standard Error of Tumor Volumes Grouped by Drug and Timepoint
+standard_error_tumorvol = combined.groupby(["Drug","Timepoint"])["Tumor Volume (mm3)"].sem().reset_index()
+# Convert to DataFrame
+standard_error_tumorvol_df = pd.DataFrame(stderror_tumorvol)
+# Preview DataFrame
+standard_error_tumorvol_df.head()
+
+
+# In[73]:
+
+
+# Minor Data Munging to Re-Format the Data Frames
+cleaned_tumor_response=tumor_response.pivot(index="Timepoint", columns="Drug", values='Tumor Volume (mm3)')
+# Preview that Reformatting worked
+cleaned_tumor_response.head()
+
+
+# In[111]:
+
+
+# Generate the Plot (with Error Bars)
+drug = [['Capomulin', 'Ceftamin', 'Infubinol', 'Ketapril', 'Naftisol', 'Placebo', 'Propriva', 
+         'Ramicane', 'Stelasyn', 'Zoniferol']]
+x_axis = cleaned_tumor_response.index
+fig, ax = plt.subplots()
+ax.set(xlabel="Timepoint", ylabel= "Tumor Volume (mm3)", title="Error Bar Plot")
+#Capomulin
+ax.errorbar(x_axis, cleaned_tumor_response['Capomulin'], yerr = None, linestyle="-", fmt='o', color ='r', label = "Capomulin")
+#Infubinol
+ax.errorbar(x_axis, cleaned_tumor_response['Infubinol'], yerr = None, linestyle="-", fmt='o', color='b', label="Infubinol")
+#Ketapril
+ax.errorbar(x_axis, cleaned_tumor_response['Ketapril'], yerr = None, linestyle="-", fmt='o', color='g', label="Ketapril")
+#Placebo
+ax.errorbar(x_axis, cleaned_tumor_response['Placebo'], yerr = None, linestyle="-", fmt='o', color='black', label="Placebo")
+#Add gridlines
+ax.grid()
+#Add legends
+ax.legend(loc="best")
+
+# Save the Figure
+path=os.path.join(os.path.expanduser("~"), "Desktop", "Error Bar Plot.png")
+path
+fig.savefig(path)
+
+
+# ## Metastatic Response to Treatment
+
+# In[90]:
+
+
+# Store the Mean Met. Site Data Grouped by Drug and Timepoint 
+mean_met_site=combined.groupby(["Drug","Timepoint"])['Metastatic Sites'].mean().reset_index()
+# Convert to DataFrame
+met_response_df = pd.DataFrame(mean_met_site)
+# Preview DataFrame
+met_response_df.head()
+
+
+# In[94]:
+
+
+# Store the Standard Error associated with Met. Sites Grouped by Drug and Timepoint 
+standard_error_met_site = combined.groupby(["Drug","Timepoint"])['Metastatic Sites'].sem().reset_index()
+# Convert to DataFrame
+se_met_response_df=pd.DataFrame(standard_error_met_site)
+# Preview DataFrame
+se_met_response_df.head()
+
+
+# In[96]:
+
+
+# Minor Data Munging to Re-Format the Data Frames
+cleaned_met_sites_df=met_response_df.pivot(index='Timepoint', columns='Drug', values='Metastatic Sites')
+# Preview that Reformatting worked
+cleaned_met_sites_df.head()
+
+
+# In[8]:
+
+
+
+
+
+# In[113]:
+
+
+# Generate the Plot (with Error Bars)
+x_axis = cleaned_met_sites_df.index
+fig2, ax2 = plt.subplots();
+ax2.set(xlabel="Treatment Duration (Days)", ylabel= "Met. Sites", title="Metastatic Spread During Treatment")
+ax2.errorbar(x_axis, cleaned_met_sites_df['Capomulin'], yerr = None, linestyle="-", fmt='x', color='r', label="Capomulin")
+ax2.errorbar(x_axis, cleaned_met_sites_df['Infubinol'], yerr = None, linestyle="-", fmt='o', color='b', label="Infubinol")
+ax2.errorbar(x_axis, cleaned_met_sites_df['Ketapril'], yerr = None, linestyle="-", fmt='+', color='g', label="Ketapril")
+ax2.errorbar(x_axis, cleaned_met_sites_df['Placebo'], yerr = None, linestyle="-", fmt='X', color='black', label="Placebo")
+ax2.grid()
+ax2.legend(loc="best")
+# Save the Figure
+path=os.path.join(os.path.expanduser("~"), "Desktop", "Met Sites Error Bar.png")
+path
+fig.savefig(path)
+
+
+# ## Survival Rates
+
+# In[120]:
+
+
+# Store the Count of Mice Grouped by Drug and Timepoint (W can pass any metric)
+mice_count=combined.groupby(["Drug","Timepoint"])['Mouse ID'].count().reset_index()
+# Convert to DataFrame
+mice_count_df = pd.DataFrame(mice_count)
+# Preview DataFrame
+mice_count_df.head()
+
+
+# In[123]:
+
+
+# Minor Data Munging to Re-Format the Data Frames
+cleaned_mouse_count_df = mice_count_df.pivot(index='Timepoint', columns='Drug', values='Mouse ID')
+# Preview the Data Frame
+cleaned_mouse_count_df.head()
+
+
+# In[131]:
+
+
+# Generate the Plot (Accounting for percentages)
+#adjust values to be percentages
+#Convert survival rate into percentages
+percent_survival_df =cleaned_mouse_count_df.astype(float)
+percent_survival_df["Capomulin_Survival_Percent"]= cleaned_mouse_count_df["Capomulin"]/cleaned_mouse_count_df["Capomulin"].iloc[0] * 100
+percent_survival_df["Infubinol_Survival_Percent"]= cleaned_mouse_count_df["Infubinol"]/cleaned_mouse_count_df["Infubinol"].iloc[0] * 100
+percent_survival_df["Ketapril_Survival_Percent"]= cleaned_mouse_count_df["Ketapril"]/cleaned_mouse_count_df["Ketapril"].iloc[0] * 100
+percent_survival_df["Placebo_Survival_Percent"]= cleaned_mouse_count_df["Placebo"]/cleaned_mouse_count_df["Placebo"].iloc[0] * 100
+
+#Plot
+fig3, ax3 = plt.subplots()
+ax3.set(xlabel="Time (Days)", ylabel= "Survival Rate", title="Survival During Treatment")
+ax3.errorbar(percent_survival_df.index, percent_survival_df['Capomulin_Survival_Percent'], yerr = None, linestyle="-", fmt='o', color='r', label="Capomulin")
+ax3.errorbar(percent_survival_df.index, percent_survival_df['Infubinol_Survival_Percent'], yerr = None, linestyle="-", fmt='x', color='b', label="Infubinol")
+ax3.errorbar(percent_survival_df.index, percent_survival_df['Ketapril_Survival_Percent'], yerr = None, linestyle="-", fmt='+', color='g', label="Ketapril")
+ax3.errorbar(percent_survival_df.index, percent_survival_df['Placebo_Survival_Percent'], yerr = None, linestyle="-", fmt='X', color='black', label="Placebo")
+ax3.grid()
+ax3.legend(loc="best")
+
+# Save the Figure
+path=os.path.join(os.path.expanduser("~"), "Desktop", "Survival During Treatment.png")
+path
+fig.savefig(path)
+
+# Show the Figure
+plt.show()
+
+
+# ## Summary Bar Graph
+
+# In[179]:
+
+
+# Calculate the percent changes for each drug
+capomulin_percent=(cleaned_mouse_count_df["Capomulin"].iloc[9]-cleaned_mouse_count_df["Capomulin"].iloc[0])
+ceftamin_percent=(cleaned_mouse_count_df["Ceftamin"].iloc[9]-cleaned_mouse_count_df["Ceftamin"].iloc[0])/cleaned_mouse_count_df["Ceftamin"].iloc[9]*100
+infubinol_percent=(cleaned_mouse_count_df["Infubinol"].iloc[9]-cleaned_mouse_count_df["Infubinol"].iloc[0])/cleaned_mouse_count_df["Infubinol"].iloc[9]*100
+ketapril_percent=(cleaned_mouse_count_df["Ketapril"].iloc[9]-cleaned_mouse_count_df["Ketapril"].iloc[0])/cleaned_mouse_count_df["Ketapril"].iloc[9]*100
+naftisol_percent=(cleaned_mouse_count_df["Naftisol"].iloc[9]-cleaned_mouse_count_df["Naftisol"].iloc[0])/cleaned_mouse_count_df["Naftisol"].iloc[9]*100
+placebo_percent=(cleaned_mouse_count_df["Placebo"].iloc[9]-cleaned_mouse_count_df["Placebo"].iloc[0])/cleaned_mouse_count_df["Placebo"].iloc[9]*100
+propriva_percent=(cleaned_mouse_count_df["Propriva"].iloc[9]-cleaned_mouse_count_df["Propriva"].iloc[0])/cleaned_mouse_count_df["Propriva"].iloc[9]*100
+ramicane_percent=(cleaned_mouse_count_df["Ramicane"].iloc[9]-cleaned_mouse_count_df["Ramicane"].iloc[0])/cleaned_mouse_count_df["Ramicane"].iloc[9]*100
+stelasyn_percent=(cleaned_mouse_count_df["Stelasyn"].iloc[9]-cleaned_mouse_count_df["Stelasyn"].iloc[0])/cleaned_mouse_count_df["Stelasyn"].iloc[9]*100
+zoniferol_percent=(cleaned_mouse_count_df["Zoniferol"].iloc[9]-cleaned_mouse_count_df["Zoniferol"].iloc[0])/cleaned_mouse_count_df["Zoniferol"].iloc[9]*100
+
+# Store percentages as tuple
+percentages_tuple={'Capomulin': capomulin_percent, 'Ceftamin': ceftamin_percent, 'Infubinol': infubinol_percent, 'Ketapril': ketapril_percent,
+          'Naftisol': naftisol_percent, 'Placebo': placebo_percent, 'Propriva': propriva_percent, 'Ramicane': ramicane_percent,
+          'Stelasyn': stelasyn_percent, 'Zoniferol': zoniferol_percent}
+# Display the data to confirm
+tumorvol_percent_change=pd.Series(percentages_tuple)
+tumorvol_percent_change
+
+# drug_percent_change = tumorvol_percent_change.keys()
+
+
+# In[180]:
+
+
+# Calculate the percent changes for each drug
+Capomulin_percent=(cleaned_mouse_count_df["Capomulin"].iloc[9]-cleaned_mouse_count_df["Capomulin"].iloc[0])/cleaned_mouse_count_df["Capomulin"].iloc[0]*100
+Ceftamin_percent=(cleaned_mouse_count_df["Ceftamin"].iloc[9]-cleaned_mouse_count_df["Ceftamin"].iloc[0])/cleaned_mouse_count_df["Ceftamin"].iloc[0]*100
+Infubinol_percent=(cleaned_mouse_count_df["Infubinol"].iloc[9]-cleaned_mouse_count_df["Infubinol"].iloc[0])/cleaned_mouse_count_df["Infubinol"].iloc[0]*100
+Ketapril_percent=(cleaned_mouse_count_df["Ketapril"].iloc[9]-cleaned_mouse_count_df["Ketapril"].iloc[0])/cleaned_mouse_count_df["Ketapril"].iloc[0]*100
+Naftisol_percent=(cleaned_mouse_count_df["Naftisol"].iloc[9]-cleaned_mouse_count_df["Naftisol"].iloc[0])/cleaned_mouse_count_df["Naftisol"].iloc[0]*100
+Placebo_percent=(cleaned_mouse_count_df["Placebo"].iloc[9]-cleaned_mouse_count_df["Placebo"].iloc[0])/cleaned_mouse_count_df["Placebo"].iloc[0]*100
+Propriva_percent=(cleaned_mouse_count_df["Propriva"].iloc[9]-cleaned_mouse_count_df["Propriva"].iloc[0])/cleaned_mouse_count_df["Propriva"].iloc[0]*100
+Ramicane_percent=(cleaned_mouse_count_df["Ramicane"].iloc[9]-cleaned_mouse_count_df["Ramicane"].iloc[0])/cleaned_mouse_count_df["Ramicane"].iloc[0]*100
+Stelasyn_percent=(cleaned_mouse_count_df["Stelasyn"].iloc[9]-cleaned_mouse_count_df["Stelasyn"].iloc[0])/cleaned_mouse_count_df["Stelasyn"].iloc[0]*100
+Zoniferol_percent=(cleaned_mouse_count_df["Zoniferol"].iloc[9]-cleaned_mouse_count_df["Zoniferol"].iloc[0])/cleaned_mouse_count_df["Zoniferol"].iloc[0]*100
+
+# Store all Relevant Percent Changes into a Tuple
+pct_tuple={'Capomulin': Capomulin_percent, 'Ceftamin': Ceftamin_percent, 'Infubinol': Infubinol_percent, 'Ketapril': Ketapril_percent,
+          'Naftisol': Naftisol_percent, 'Placebo': Placebo_percent, 'Propriva': Propriva_percent, 'Ramicane': Ramicane_percent,
+          'Stelasyn': Stelasyn_percent, 'Zoniferol': Zoniferol_percent}
+# Display the data to confirm
+pctchg_tumorvol=pd.Series(pct_tuple)
+pctchg_tumorvol
+
+
+# In[168]:
+
+
+# Calculate the percent changes for each drug
+Capomulin_percent=(cleaned_mouse_count_df["Capomulin"].iloc[9]-cleaned_mouse_count_df["Capomulin"].iloc[0])/cleaned_mouse_count_df["Capomulin"].iloc[9]*100
+Ceftamin_percent=(cleaned_mouse_count_df["Ceftamin"].iloc[9]-cleaned_mouse_count_df["Ceftamin"].iloc[0])/cleaned_mouse_count_df["Ceftamin"].iloc[9]*100
+Infubinol_percent=(reshape_tumor_response_df["Infubinol"].iloc[9]-reshape_tumor_response_df["Infubinol"].iloc[0])/reshape_tumor_response_df["Infubinol"].iloc[9]*100
+Ketapril_percent=(reshape_tumor_response_df["Ketapril"].iloc[9]-reshape_tumor_response_df["Ketapril"].iloc[0])/reshape_tumor_response_df["Ketapril"].iloc[9]*100
+Naftisol_percent=(reshape_tumor_response_df["Naftisol"].iloc[9]-reshape_tumor_response_df["Naftisol"].iloc[0])/reshape_tumor_response_df["Naftisol"].iloc[9]*100
+Placebo_percent=(reshape_tumor_response_df["Placebo"].iloc[9]-reshape_tumor_response_df["Placebo"].iloc[0])/reshape_tumor_response_df["Placebo"].iloc[9]*100
+Propriva_percent=(reshape_tumor_response_df["Propriva"].iloc[9]-reshape_tumor_response_df["Propriva"].iloc[0])/reshape_tumor_response_df["Propriva"].iloc[9]*100
+Ramicane_percent=(reshape_tumor_response_df["Ramicane"].iloc[9]-reshape_tumor_response_df["Ramicane"].iloc[0])/reshape_tumor_response_df["Ramicane"].iloc[9]*100
+Stelasyn_percent=(reshape_tumor_response_df["Stelasyn"].iloc[9]-reshape_tumor_response_df["Stelasyn"].iloc[0])/reshape_tumor_response_df["Stelasyn"].iloc[9]*100
+Zoniferol_percent=(reshape_tumor_response_df["Zoniferol"].iloc[9]-reshape_tumor_response_df["Zoniferol"].iloc[0])/reshape_tumor_response_df["Zoniferol"].iloc[9]*100
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[148]:
+
+
+fig4, ax4 = plt.subplots()
+x_axis = np.arange(0, len(drug_percent_change))
+# Orient widths. Add labels, tick marks, etc. 
+ticks=[]
+for x in x_axis:
+    ticks.append(x + 0.5)
+plt.xticks(ticks, drug_percent_change)
+# Splice data between passing and failing drugs
+colors=[]
+for value in tumorvol_percent_change:
+     if value>=0:
+            colors.append('g')
+     else: 
+            colors.append('r')
+# Use functions to label the percentages of changes       
+pct_chg_bar = ax4.bar(x_axis, pctchg_tumorvol, color=colors, align="edge")
+plt.xticks(rotation=45)
+ax4.set(xlabel="Drugs", ylabel="Percentage Tumor Volume Change", title="Tumor Volume Change over 45 Days")
+# Call functions to implement the function calls
+for i, v in enumerate(pctchg_tumorvol):
+    ax4.text(i+0.5, 
+              v/pctchg_tumorvol[i]+10, 
+              pctchg_tumorvol[i],
+              fontsize=10, 
+              color='white')
+
+# Save the Figure
+path=os.path.join(os.path.expanduser("~"), "Desktop", "Tumor Vol Chg over 45 Days")
+path
+fig3.savefig(path)
+# Show the Figure
+fig3.show()
+
+
+# ![Metastatic Spread During Treatment](../Images/change.png)
+
+# In[ ]:
+
+
+
+
